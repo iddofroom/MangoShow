@@ -362,26 +362,118 @@ export function processDashboardData(
       
     } else {
       // הזמנה מרובת מוצרים - צריך לחלק את הסכום לפי מחירים שלמדנו
+
+      // קודם כל, נזהה איזה מוצרים יש להם מחיר ידוע ואיזה לא
+      const ordersWithPrice: Array<{order: any, price: number}> = [];
+      const ordersWithoutPrice: any[] = [];
       let estimatedTotal = 0;
 
       for (const order of orders) {
         const price = getProductPrice(order.product, order.location, order.date, learnedPrices);
         if (price) {
+          ordersWithPrice.push({order, price});
           estimatedTotal += price * order.qty;
+        } else {
+          ordersWithoutPrice.push(order);
         }
       }
 
       // הוסף את הסכום הכולל רק פעם אחת
       totalRevenue += row.totalAmount;
 
-      // אם הצלחנו לאמוד מחירים, נחלק את הסכום לפי יחס
-      if (estimatedTotal > 0) {
-        for (const order of orders) {
-          const price = getProductPrice(order.product, order.location, order.date, learnedPrices);
-          if (!price) continue;
+      // אם יש מוצרים עם מחירים ידועים, נחשב כמה הם צפויים לעלות
+      // ואז נחלק את היתרה בין המוצרים ללא מחירים
+      if (ordersWithPrice.length > 0 && ordersWithoutPrice.length > 0) {
+        // חלק 1: הקצה מחירים למוצרים עם מחיר ידוע בהתאם ליחס
+        let allocatedRevenue = 0;
 
+        for (const {order, price} of ordersWithPrice) {
           const orderEstimate = price * order.qty;
           const revenue = (orderEstimate / estimatedTotal) * row.totalAmount;
+          allocatedRevenue += revenue;
+          const unitPrice = revenue / order.qty;
+
+          // הוסף לסיכום המכירה
+          saleProducts.push({
+            product: order.product,
+            qty: order.qty,
+            unitPrice: unitPrice,
+            totalPrice: revenue
+          });
+
+          // עדכון מיפויים
+          if (!productMap.has(order.product)) {
+            productMap.set(order.product, {
+              product: order.product,
+              totalQty: 0,
+              totalRevenue: 0,
+              avgPrice: 0,
+              priceBreakdown: {},
+              locationBreakdown: {},
+              dateBreakdown: {}
+            });
+          }
+
+          const productSummary = productMap.get(order.product)!;
+          productSummary.totalQty += order.qty;
+          productSummary.totalRevenue += revenue;
+
+          const priceKey2 = (revenue / order.qty).toFixed(2);
+          if (!productSummary.priceBreakdown[priceKey2]) {
+            productSummary.priceBreakdown[priceKey2] = { qty: 0, revenue: 0 };
+          }
+          productSummary.priceBreakdown[priceKey2].qty += order.qty;
+          productSummary.priceBreakdown[priceKey2].revenue += revenue;
+
+          if (!productSummary.locationBreakdown[order.location]) {
+            productSummary.locationBreakdown[order.location] = { qty: 0, revenue: 0 };
+          }
+          productSummary.locationBreakdown[order.location].qty += order.qty;
+          productSummary.locationBreakdown[order.location].revenue += revenue;
+
+          if (!productSummary.dateBreakdown[order.date]) {
+            productSummary.dateBreakdown[order.date] = { qty: 0, revenue: 0 };
+          }
+          productSummary.dateBreakdown[order.date].qty += order.qty;
+          productSummary.dateBreakdown[order.date].revenue += revenue;
+
+          if (!locationMap.has(order.location)) {
+            locationMap.set(order.location, {
+              location: order.location,
+              totalRevenue: 0,
+              totalOrders: 0,
+              salesDays: 0,
+              productBreakdown: {},
+              uniqueDates: new Set<string>()
+            } as any);
+          }
+
+          const locationSummary = locationMap.get(order.location)! as any;
+          locationSummary.totalRevenue += revenue;
+
+          if (order.date && !locationSummary.uniqueDates.has(order.date)) {
+            locationSummary.uniqueDates.add(order.date);
+          }
+
+          if (!locationSummary.productBreakdown[order.product]) {
+            locationSummary.productBreakdown[order.product] = { qty: 0, revenue: 0 };
+          }
+          locationSummary.productBreakdown[order.product].qty += order.qty;
+          locationSummary.productBreakdown[order.product].revenue += revenue;
+
+          if (!minDate || order.date < minDate) minDate = order.date;
+          if (!maxDate || order.date > maxDate) maxDate = order.date;
+        }
+
+        // חלק 2: חלק את היתרה בין המוצרים ללא מחיר ידוע לפי כמויות
+        const remainingRevenue = row.totalAmount - allocatedRevenue;
+        let totalQtyWithoutPrice = 0;
+        for (const order of ordersWithoutPrice) {
+          totalQtyWithoutPrice += order.qty;
+        }
+
+        for (const order of ordersWithoutPrice) {
+          const revenue = (order.qty / totalQtyWithoutPrice) * remainingRevenue;
           const unitPrice = revenue / order.qty;
 
           // הוסף לסיכום המכירה
@@ -457,8 +549,86 @@ export function processDashboardData(
           if (!minDate || order.date < minDate) minDate = order.date;
           if (!maxDate || order.date > maxDate) maxDate = order.date;
         }
+      } else if (ordersWithPrice.length > 0 && ordersWithoutPrice.length === 0) {
+        // כל המוצרים יש להם מחיר ידוע - חלק לפי יחס המחירים הידועים
+        for (const {order, price} of ordersWithPrice) {
+          const orderEstimate = price * order.qty;
+          const revenue = (orderEstimate / estimatedTotal) * row.totalAmount;
+          const unitPrice = revenue / order.qty;
+
+          // הוסף לסיכום המכירה
+          saleProducts.push({
+            product: order.product,
+            qty: order.qty,
+            unitPrice: unitPrice,
+            totalPrice: revenue
+          });
+
+          // עדכון מיפויים
+          if (!productMap.has(order.product)) {
+            productMap.set(order.product, {
+              product: order.product,
+              totalQty: 0,
+              totalRevenue: 0,
+              avgPrice: 0,
+              priceBreakdown: {},
+              locationBreakdown: {},
+              dateBreakdown: {}
+            });
+          }
+
+          const productSummary = productMap.get(order.product)!;
+          productSummary.totalQty += order.qty;
+          productSummary.totalRevenue += revenue;
+
+          const priceKey2 = (revenue / order.qty).toFixed(2);
+          if (!productSummary.priceBreakdown[priceKey2]) {
+            productSummary.priceBreakdown[priceKey2] = { qty: 0, revenue: 0 };
+          }
+          productSummary.priceBreakdown[priceKey2].qty += order.qty;
+          productSummary.priceBreakdown[priceKey2].revenue += revenue;
+
+          if (!productSummary.locationBreakdown[order.location]) {
+            productSummary.locationBreakdown[order.location] = { qty: 0, revenue: 0 };
+          }
+          productSummary.locationBreakdown[order.location].qty += order.qty;
+          productSummary.locationBreakdown[order.location].revenue += revenue;
+
+          if (!productSummary.dateBreakdown[order.date]) {
+            productSummary.dateBreakdown[order.date] = { qty: 0, revenue: 0 };
+          }
+          productSummary.dateBreakdown[order.date].qty += order.qty;
+          productSummary.dateBreakdown[order.date].revenue += revenue;
+
+          if (!locationMap.has(order.location)) {
+            locationMap.set(order.location, {
+              location: order.location,
+              totalRevenue: 0,
+              totalOrders: 0,
+              salesDays: 0,
+              productBreakdown: {},
+              uniqueDates: new Set<string>()
+            } as any);
+          }
+
+          const locationSummary = locationMap.get(order.location)! as any;
+          locationSummary.totalRevenue += revenue;
+
+          if (order.date && !locationSummary.uniqueDates.has(order.date)) {
+            locationSummary.uniqueDates.add(order.date);
+          }
+
+          if (!locationSummary.productBreakdown[order.product]) {
+            locationSummary.productBreakdown[order.product] = { qty: 0, revenue: 0 };
+          }
+          locationSummary.productBreakdown[order.product].qty += order.qty;
+          locationSummary.productBreakdown[order.product].revenue += revenue;
+
+          if (!minDate || order.date < minDate) minDate = order.date;
+          if (!maxDate || order.date > maxDate) maxDate = order.date;
+        }
       } else {
-        // אם אין מחירים נלמדים, חלק שווה בשווה לפי כמויות
+        // אף מוצר אין לו מחיר ידוע - חלק שווה בשווה לפי כמויות
         let totalQty = 0;
         for (const order of orders) {
           totalQty += order.qty;
