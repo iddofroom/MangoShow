@@ -39,7 +39,8 @@ function HomeComponent() {
   const [error, setError] = useState<string | null>(null);
   const [searchLocation, setSearchLocation] = useState(''); // חיפוש נקודת מכירה
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null); // מוצר מורחב לפירוט מחירים
-  const [expandedSale, setExpandedSale] = useState<number | null>(null); // מכירה מורחבת
+  const [expandedDate, setExpandedDate] = useState<string | null>(null); // תאריך מורחב
+  const [expandedSale, setExpandedSale] = useState<string | null>(null); // מכירה מורחבת (תאריך|מיקום)
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -636,109 +637,179 @@ function HomeComponent() {
                 🛒 סיכום לפי מכירה
               </h2>
               <p style={{ color: '#666', marginBottom: '20px', fontSize: '16px' }}>
-                לחץ על מכירה כדי לראות את פירוט המוצרים והמחירים
+                לחץ על תאריך כדי לראות נקודות מכירה, ולחץ על נקודת מכירה לפירוט מלא
               </p>
 
-              {data.saleSummaries.map((sale, index) => (
-                <div key={index} style={{ marginBottom: '15px' }}>
-                  <div
-                    onClick={() => setExpandedSale(expandedSale === index ? null : index)}
-                    style={{
-                      background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-                      color: 'white',
-                      padding: '20px',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      transition: 'transform 0.2s',
-                      boxShadow: '0 4px 15px rgba(250, 112, 154, 0.3)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                      <span style={{ fontSize: '24px' }}>
-                        {expandedSale === index ? '▼' : '▶'}
-                      </span>
-                      <div>
-                        <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
-                          {sale.date} - {sale.location}
-                        </div>
-                        <div style={{ fontSize: '14px', opacity: 0.9, marginTop: '5px' }}>
-                          {sale.products.length} {sale.products.length === 1 ? 'פריט' : 'פריטים'}
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: '14px', opacity: 0.9 }}>
-                        הכנסה כוללת
-                      </div>
-                      <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
-                        {formatCurrency(sale.totalRevenue)}
-                      </div>
-                    </div>
-                  </div>
+              {(() => {
+                // קיבוץ לפי תאריך
+                const salesByDate = new Map<string, typeof data.saleSummaries>();
+                data.saleSummaries.forEach(sale => {
+                  if (!salesByDate.has(sale.date)) {
+                    salesByDate.set(sale.date, []);
+                  }
+                  salesByDate.get(sale.date)!.push(sale);
+                });
 
-                  {expandedSale === index && (
-                    <div style={{
-                      background: '#fff5f7',
-                      padding: '20px',
-                      borderRadius: '0 0 10px 10px',
-                      marginTop: '-10px',
-                      paddingTop: '30px'
-                    }}>
-                      <table style={{
-                        width: '100%',
-                        borderCollapse: 'collapse',
-                        background: 'white',
-                        borderRadius: '8px',
-                        overflow: 'hidden',
-                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-                      }}>
-                        <thead>
-                          <tr style={{ background: '#fa709a', color: 'white' }}>
-                            <th style={{ padding: '15px', textAlign: 'right' }}>מוצר</th>
-                            <th style={{ padding: '15px', textAlign: 'center' }}>כמות</th>
-                            <th style={{ padding: '15px', textAlign: 'center' }}>מחיר ליחידה</th>
-                            <th style={{ padding: '15px', textAlign: 'center' }}>סך הכל</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sale.products.map((product, prodIndex) => (
-                            <tr key={prodIndex} style={{
-                              background: prodIndex % 2 === 0 ? '#fff5f7' : 'white',
-                              borderBottom: '1px solid #eee'
-                            }}>
-                              <td style={{ padding: '15px', fontWeight: 'bold', fontSize: '16px' }}>
-                                {product.product}
-                              </td>
-                              <td style={{ padding: '15px', textAlign: 'center', fontSize: '16px' }}>
-                                {formatNumber(product.qty)}
-                              </td>
-                              <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#fa709a' }}>
-                                {formatCurrency(product.unitPrice)}
-                              </td>
-                              <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#667eea', fontSize: '18px' }}>
-                                {formatCurrency(product.totalPrice)}
-                              </td>
-                            </tr>
-                          ))}
-                          <tr style={{ background: '#fa709a', color: 'white', fontWeight: 'bold' }}>
-                            <td colSpan={3} style={{ padding: '15px', textAlign: 'right', fontSize: '18px' }}>
-                              סך הכל מכירה:
-                            </td>
-                            <td style={{ padding: '15px', textAlign: 'center', fontSize: '20px' }}>
-                              {formatCurrency(sale.totalRevenue)}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
+                // המרה למערך וסידור לפי תאריך עולה (ישן לחדש)
+                const sortedDates = Array.from(salesByDate.entries()).sort((a, b) => {
+                  const [dayA, monthA] = a[0].split('.').map(Number);
+                  const [dayB, monthB] = b[0].split('.').map(Number);
+                  if (monthA !== monthB) return monthA - monthB;
+                  return dayA - dayB;
+                });
+
+                return sortedDates.map(([date, sales]) => {
+                  const dateTotalRevenue = sales.reduce((sum, s) => sum + s.totalRevenue, 0);
+                  const dateKey = date;
+
+                  return (
+                    <div key={date} style={{ marginBottom: '10px' }}>
+                      {/* תאריך - רמה ראשונה */}
+                      <div
+                        onClick={() => setExpandedDate(expandedDate === dateKey ? null : dateKey)}
+                        style={{
+                          background: 'linear-gradient(135deg, #a8e6cf 0%, #c3bef0 100%)',
+                          color: '#2c3e50',
+                          padding: '12px 20px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          transition: 'all 0.2s',
+                          boxShadow: '0 2px 8px rgba(168, 230, 207, 0.3)',
+                          fontSize: '16px'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(-3px)'}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{ fontSize: '18px' }}>
+                            {expandedDate === dateKey ? '▼' : '▶'}
+                          </span>
+                          <div style={{ fontWeight: 'bold', fontSize: '18px' }}>
+                            📅 {date}
+                          </div>
+                          <div style={{ fontSize: '14px', opacity: 0.8 }}>
+                            ({sales.length} {sales.length === 1 ? 'נקודה' : 'נקודות'})
+                          </div>
+                        </div>
+                        <div style={{ fontWeight: 'bold', fontSize: '18px' }}>
+                          {formatCurrency(dateTotalRevenue)}
+                        </div>
+                      </div>
+
+                      {/* נקודות מכירה - רמה שנייה */}
+                      {expandedDate === dateKey && (
+                        <div style={{ marginTop: '5px', marginRight: '30px' }}>
+                          {sales.map((sale, idx) => {
+                            const saleKey = `${sale.date}|${sale.location}`;
+                            return (
+                              <div key={idx} style={{ marginBottom: '5px' }}>
+                                <div
+                                  onClick={() => setExpandedSale(expandedSale === saleKey ? null : saleKey)}
+                                  style={{
+                                    background: 'linear-gradient(135deg, #ffd3a5 0%, #ffc3d4 100%)',
+                                    color: '#2c3e50',
+                                    padding: '10px 18px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    transition: 'all 0.2s',
+                                    boxShadow: '0 2px 6px rgba(255, 211, 165, 0.3)',
+                                    fontSize: '15px'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(-3px)'}
+                                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <span style={{ fontSize: '16px' }}>
+                                      {expandedSale === saleKey ? '▼' : '▶'}
+                                    </span>
+                                    <div>
+                                      <div style={{ fontWeight: 'bold' }}>
+                                        📍 {sale.location}
+                                      </div>
+                                      <div style={{ fontSize: '13px', opacity: 0.8, marginTop: '2px' }}>
+                                        {sale.products.length} {sale.products.length === 1 ? 'פריט' : 'פריטים'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div style={{ fontWeight: 'bold', fontSize: '16px' }}>
+                                    {formatCurrency(sale.totalRevenue)}
+                                  </div>
+                                </div>
+
+                                {/* פירוט מוצרים - רמה שלישית */}
+                                {expandedSale === saleKey && (
+                                  <div style={{
+                                    background: '#fff9f5',
+                                    padding: '15px',
+                                    borderRadius: '0 0 6px 6px',
+                                    marginTop: '-3px',
+                                    paddingTop: '18px',
+                                    marginRight: '20px'
+                                  }}>
+                                    <table style={{
+                                      width: '100%',
+                                      borderCollapse: 'collapse',
+                                      background: 'white',
+                                      borderRadius: '6px',
+                                      overflow: 'hidden',
+                                      boxShadow: '0 1px 6px rgba(0,0,0,0.08)',
+                                      fontSize: '14px'
+                                    }}>
+                                      <thead>
+                                        <tr style={{ background: '#ffb88c', color: 'white' }}>
+                                          <th style={{ padding: '10px', textAlign: 'right' }}>מוצר</th>
+                                          <th style={{ padding: '10px', textAlign: 'center' }}>כמות</th>
+                                          <th style={{ padding: '10px', textAlign: 'center' }}>מחיר ליחידה</th>
+                                          <th style={{ padding: '10px', textAlign: 'center' }}>סך הכל</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {sale.products.map((product, prodIndex) => (
+                                          <tr key={prodIndex} style={{
+                                            background: prodIndex % 2 === 0 ? '#fff9f5' : 'white',
+                                            borderBottom: '1px solid #f0f0f0'
+                                          }}>
+                                            <td style={{ padding: '10px', fontWeight: 'bold' }}>
+                                              {product.product}
+                                            </td>
+                                            <td style={{ padding: '10px', textAlign: 'center' }}>
+                                              {formatNumber(product.qty)}
+                                            </td>
+                                            <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#ff9a76' }}>
+                                              {formatCurrency(product.unitPrice)}
+                                            </td>
+                                            <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#667eea' }}>
+                                              {formatCurrency(product.totalPrice)}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                        <tr style={{ background: '#ffb88c', color: 'white', fontWeight: 'bold' }}>
+                                          <td colSpan={3} style={{ padding: '10px', textAlign: 'right' }}>
+                                            סך הכל מכירה:
+                                          </td>
+                                          <td style={{ padding: '10px', textAlign: 'center' }}>
+                                            {formatCurrency(sale.totalRevenue)}
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+                  );
+                });
+              })()}
             </div>
 
             {/* פירוט מוצרים לפי נקודת מכירה */}
@@ -765,13 +836,25 @@ function HomeComponent() {
                 />
               </div>
 
-              {data.locationSummaries
-                .filter(location =>
-                  location.location !== 'אחר' && // הסתר "אחר"
-                  (searchLocation === '' ||
-                  location.location.toLowerCase().includes(searchLocation.toLowerCase()))
-                )
-                .map((location, locIndex) => (
+              {searchLocation === '' ? (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '40px',
+                  color: '#999',
+                  fontSize: '18px',
+                  background: '#f8f9ff',
+                  borderRadius: '10px',
+                  border: '2px dashed #ccc'
+                }}>
+                  👆 הקלד בחיפוש כדי לראות נקודות מכירה
+                </div>
+              ) : (
+                data.locationSummaries
+                  .filter(location =>
+                    location.location !== 'אחר' && // הסתר "אחר"
+                    location.location.toLowerCase().includes(searchLocation.toLowerCase())
+                  )
+                  .map((location, locIndex) => (
                 <div key={locIndex} style={{
                   marginBottom: '30px',
                   background: '#f8f9ff',
@@ -816,7 +899,8 @@ function HomeComponent() {
                     </table>
                   </div>
                 </div>
-              ))}
+              ))
+              )}
             </div>
           </div>
         )}

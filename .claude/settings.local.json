@@ -1,15 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git init:*)",
-      "Bash(git remote add:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(git branch:*)",
-      "Bash(git pull:*)",
-      "Bash(npm run build:*)",
-      "Bash(location\" as key for efficient grouping\n\nExample:\nBefore: 3 separate rows for 3 transactions at \"ראש הנקרה\" on \"27.10\"\nAfter: 1 combined row showing all products sold at that location on that date\n\nThis makes the sales summary much clearer for reviewing daily sales per location.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []
