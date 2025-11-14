@@ -98,7 +98,8 @@ export function parseOrderDetails(orderDetails: string, defaultQty: number): Ord
   // בדיקה אם יש נקודתיים - מוצרים עם כמויות ספציפיות
   if (cellString.includes(':')) {
     // תבנית: "מוצר - מיקום , תאריך : כמות"
-    const regex = /(.*?)\s*-\s*(.*?)\s*,\s*(\d{1,2}\.\d{1,2})\s*:\s*(\d+)/g;
+    // הביטוי מתאים גם למוצרים מרובים מופרדים בפסיקים
+    const regex = /([^,-]+?)\s*-\s*([^,]+?)\s*,\s*(\d{1,2}\.\d{1,2})\s*:\s*(\d+)/g;
     let match;
 
     while ((match = regex.exec(cellString)) !== null) {
