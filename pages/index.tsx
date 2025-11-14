@@ -96,10 +96,6 @@ function HomeComponent() {
     return value.toLocaleString('en-US');
   };
 
-  const formatDate = (dateStr: string) => {
-    return dateStr;
-  };
-
   return (
     <div style={{ 
       minHeight: '100vh',
@@ -247,21 +243,6 @@ function HomeComponent() {
                 </div>
                 <div style={{ fontSize: '36px', fontWeight: 'bold' }}>
                   {formatCurrency(data.totalRevenue / data.totalOrders)}
-                </div>
-              </div>
-
-              <div style={{
-                background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-                color: 'white',
-                padding: '30px',
-                borderRadius: '15px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '16px', opacity: 0.9, marginBottom: '10px' }}>
-                  טווח תאריכים
-                </div>
-                <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
-                  {formatDate(data.dateRange.start)} - {formatDate(data.dateRange.end)}
                 </div>
               </div>
             </div>
