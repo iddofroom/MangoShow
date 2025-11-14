@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function Custom404() {
   return (
     <div style={{
@@ -39,7 +41,7 @@ export default function Custom404() {
         }}>
           מצטערים, הדף שחיפשת לא קיים במערכת
         </p>
-        <a 
+        <Link
           href="/"
           style={{
             display: 'inline-block',
@@ -56,7 +58,7 @@ export default function Custom404() {
           onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
           🏠 חזרה לדף הבית
-        </a>
+        </Link>
       </div>
     </div>
   );
