@@ -9,7 +9,9 @@ import {
   processDashboardData,
   DashboardData,
   RawRow,
-  parseOrderDetails
+  parseOrderDetails,
+  learnPrices,
+  getProductPrice
 } from '../utils/dataProcessor';
 
 // Component only for client-side rendering
@@ -102,11 +104,27 @@ function HomeComponent() {
   const exportToCSV = () => {
     if (!rawRows || rawRows.length === 0) return;
 
+    // למידת מחירים מהנתונים
+    const learnedPrices = learnPrices(rawRows);
+
     // יצירת שורות CSV
     const csvRows: string[] = [];
 
-    // כותרות
-    csvRows.push('תאריך,נקודת מכירה,סכום,מוצר 1,כמות 1,מוצר 2,כמות 2,מוצר 3,כמות 3,מוצר 4,כמות 4,מוצר 5,כמות 5');
+    // מצא את המספר המקסימלי של מוצרים בהזמנה
+    let maxProducts = 0;
+    for (const row of rawRows) {
+      const orders = parseOrderDetails(row.orderDetails, row.totalQty);
+      if (orders.length > maxProducts) {
+        maxProducts = orders.length;
+      }
+    }
+
+    // בנה כותרות דינמיות לפי מספר המוצרים
+    const headers = ['תאריך', 'נקודת מכירה', 'סכום כולל'];
+    for (let i = 1; i <= maxProducts; i++) {
+      headers.push(`מוצר ${i}`, `כמות ${i}`, `מחיר ${i}`, `סך הכל ${i}`);
+    }
+    csvRows.push(headers.join(','));
 
     // עבור כל הזמנה
     for (const row of rawRows) {
@@ -126,14 +144,59 @@ function HomeComponent() {
         row.totalAmount.toFixed(2)
       ];
 
-      // הוסף עד 5 מוצרים
-      for (let i = 0; i < 5; i++) {
-        if (i < orders.length) {
-          rowData.push(orders[i].product);
-          rowData.push(orders[i].qty.toString());
-        } else {
-          rowData.push('');
-          rowData.push('');
+      // אם יש רק מוצר אחד, המחיר פשוט
+      if (orders.length === 1) {
+        const order = orders[0];
+        const price = row.totalAmount / order.qty;
+        const total = row.totalAmount;
+
+        rowData.push(order.product);
+        rowData.push(order.qty.toString());
+        rowData.push(price.toFixed(2));
+        rowData.push(total.toFixed(2));
+
+        // השלם עם שדות ריקים
+        for (let i = 1; i < maxProducts; i++) {
+          rowData.push('', '', '', '');
+        }
+      } else {
+        // הזמנה מרובת מוצרים - חשב מחירים לפי למידה
+        let estimatedTotal = 0;
+
+        // חשב סכום משוער
+        for (const order of orders) {
+          const price = getProductPrice(order.product, order.location, order.date, learnedPrices);
+          if (price) {
+            estimatedTotal += price * order.qty;
+          }
+        }
+
+        // הוסף כל מוצר עם המחיר והסכום שלו
+        for (let i = 0; i < maxProducts; i++) {
+          if (i < orders.length) {
+            const order = orders[i];
+            const learnedPrice = getProductPrice(order.product, order.location, order.date, learnedPrices);
+
+            if (learnedPrice && estimatedTotal > 0) {
+              // חלק את הסכום הכולל באופן יחסי
+              const orderEstimate = learnedPrice * order.qty;
+              const actualPrice = (orderEstimate / estimatedTotal) * row.totalAmount / order.qty;
+              const actualTotal = actualPrice * order.qty;
+
+              rowData.push(order.product);
+              rowData.push(order.qty.toString());
+              rowData.push(actualPrice.toFixed(2));
+              rowData.push(actualTotal.toFixed(2));
+            } else {
+              // אם אין מחיר נלמד, השאר ריק
+              rowData.push(order.product);
+              rowData.push(order.qty.toString());
+              rowData.push('');
+              rowData.push('');
+            }
+          } else {
+            rowData.push('', '', '', '');
+          }
         }
       }
 
