@@ -33,8 +33,6 @@ function HomeComponent() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
   const [searchLocation, setSearchLocation] = useState(''); // חיפוש נקודת מכירה
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,7 +73,7 @@ function HomeComponent() {
             return;
           }
           
-          const dashboardData = processDashboardData(rows, startDate, endDate);
+          const dashboardData = processDashboardData(rows);
           setData(dashboardData);
           setLoading(false);
         } catch (err) {
@@ -91,7 +89,11 @@ function HomeComponent() {
   };
 
   const formatCurrency = (value: number) => {
-    return `₪${value.toFixed(2)}`;
+    return `₪${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const formatNumber = (value: number) => {
+    return value.toLocaleString('en-US');
   };
 
   const formatDate = (dateStr: string) => {
@@ -229,7 +231,7 @@ function HomeComponent() {
                   מספר הזמנות
                 </div>
                 <div style={{ fontSize: '36px', fontWeight: 'bold' }}>
-                  {data.totalOrders.toLocaleString()}
+                  {formatNumber(data.totalOrders)}
                 </div>
               </div>
 
@@ -311,7 +313,7 @@ function HomeComponent() {
                         borderBottom: '1px solid #eee'
                       }}>
                         <td style={{ padding: '15px', fontWeight: 'bold' }}>{product.product}</td>
-                        <td style={{ padding: '15px', textAlign: 'center' }}>{product.totalQty.toLocaleString()}</td>
+                        <td style={{ padding: '15px', textAlign: 'center' }}>{formatNumber(product.totalQty)}</td>
                         <td style={{ padding: '15px', textAlign: 'center', color: '#667eea', fontWeight: 'bold' }}>
                           {formatCurrency(product.totalRevenue)}
                         </td>
@@ -340,24 +342,31 @@ function HomeComponent() {
                   boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
                 }}>
                   <thead>
-                    <tr style={{ background: '#43e97b', color: 'white' }}>
+                    <tr style={{ background: '#2d9c5e', color: 'white' }}>
                       <th style={{ padding: '15px', textAlign: 'right' }}>נקודת מכירה</th>
                       <th style={{ padding: '15px', textAlign: 'center' }}>הכנסות</th>
                       <th style={{ padding: '15px', textAlign: 'center' }}>מספר ימי מכירה</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.locationSummaries.map((location, index) => (
+                    {[...data.locationSummaries]
+                      .sort((a, b) => {
+                        // שים "אחר" בסוף
+                        if (a.location === 'אחר') return 1;
+                        if (b.location === 'אחר') return -1;
+                        return b.totalRevenue - a.totalRevenue;
+                      })
+                      .map((location, index) => (
                       <tr key={index} style={{
                         background: index % 2 === 0 ? '#f0fff4' : 'white',
                         borderBottom: '1px solid #eee'
                       }}>
                         <td style={{ padding: '15px', fontWeight: 'bold' }}>{location.location}</td>
-                        <td style={{ padding: '15px', textAlign: 'center', color: '#43e97b', fontWeight: 'bold' }}>
+                        <td style={{ padding: '15px', textAlign: 'center', color: '#2d9c5e', fontWeight: 'bold' }}>
                           {formatCurrency(location.totalRevenue)}
                         </td>
                         <td style={{ padding: '15px', textAlign: 'center' }}>
-                          {location.salesDays}
+                          {formatNumber(location.salesDays)}
                         </td>
                       </tr>
                     ))}
@@ -392,8 +401,9 @@ function HomeComponent() {
 
               {data.locationSummaries
                 .filter(location =>
-                  searchLocation === '' ||
-                  location.location.toLowerCase().includes(searchLocation.toLowerCase())
+                  location.location !== 'אחר' && // הסתר "אחר"
+                  (searchLocation === '' ||
+                  location.location.toLowerCase().includes(searchLocation.toLowerCase()))
                 )
                 .map((location, locIndex) => (
                 <div key={locIndex} style={{
@@ -430,7 +440,7 @@ function HomeComponent() {
                             borderBottom: '1px solid #eee'
                           }}>
                             <td style={{ padding: '12px' }}>{product}</td>
-                            <td style={{ padding: '12px', textAlign: 'center' }}>{data.qty.toLocaleString()}</td>
+                            <td style={{ padding: '12px', textAlign: 'center' }}>{formatNumber(data.qty)}</td>
                             <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold' }}>
                               {formatCurrency(data.revenue)}
                             </td>
