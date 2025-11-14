@@ -103,6 +103,17 @@ function HomeComponent() {
     return value.toLocaleString('en-US');
   };
 
+  const formatDateForExport = (dateStr: string) => {
+    // תאריך בפורמט dd.mm - ודא שיש אפס מוביל
+    const match = dateStr.match(/^(\d{1,2})\.(\d{1,2})$/);
+    if (match) {
+      const day = match[1].padStart(2, '0');
+      const month = match[2].padStart(2, '0');
+      return `${day}.${month}`;
+    }
+    return dateStr;
+  };
+
   const exportToCSV = () => {
     if (!rawRows || rawRows.length === 0) return;
 
@@ -136,7 +147,7 @@ function HomeComponent() {
 
       // מצא את התאריך והמיקום הראשונים
       const firstOrder = orders[0];
-      const date = firstOrder.date || '';
+      const date = formatDateForExport(firstOrder.date || '');
       const location = firstOrder.location || '';
 
       // בנה שורה עם כל המוצרים

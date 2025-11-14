@@ -241,7 +241,7 @@ export function processDashboardData(
   // מיפוי למוצרים ומיקומים
   const productMap = new Map<string, ProductSummary>();
   const locationMap = new Map<string, LocationSummary>();
-  const saleSummaries: SaleSummary[] = [];
+  const saleMap = new Map<string, SaleSummary>(); // מפתח: תאריך|מיקום
 
   let totalRevenue = 0;
   let totalOrders = 0;
@@ -544,15 +544,36 @@ export function processDashboardData(
       }
     }
 
-    // הוסף את המכירה לסיכום
+    // הוסף את המכירה לסיכום - קיבוץ לפי תאריך+מיקום
     if (saleProducts.length > 0) {
-      saleSummaries.push({
-        date: saleDate,
-        location: saleLocation,
-        totalRevenue: row.totalAmount,
-        products: saleProducts,
-        rowIndex: row.rowIndex
-      });
+      const saleKey = `${saleDate}|${saleLocation}`;
+
+      if (!saleMap.has(saleKey)) {
+        saleMap.set(saleKey, {
+          date: saleDate,
+          location: saleLocation,
+          totalRevenue: 0,
+          products: [],
+          rowIndex: row.rowIndex
+        });
+      }
+
+      const sale = saleMap.get(saleKey)!;
+      sale.totalRevenue += row.totalAmount;
+
+      // צרף את המוצרים - או עדכן אם כבר קיים
+      for (const newProduct of saleProducts) {
+        const existingProduct = sale.products.find(p => p.product === newProduct.product);
+        if (existingProduct) {
+          // עדכן מוצר קיים
+          existingProduct.qty += newProduct.qty;
+          existingProduct.totalPrice += newProduct.totalPrice;
+          existingProduct.unitPrice = existingProduct.totalPrice / existingProduct.qty;
+        } else {
+          // הוסף מוצר חדש
+          sale.products.push({ ...newProduct });
+        }
+      }
     }
   }
   
@@ -582,7 +603,7 @@ export function processDashboardData(
       b.totalRevenue - a.totalRevenue
     ),
     learnedPrices,
-    saleSummaries: saleSummaries.sort((a, b) => {
+    saleSummaries: Array.from(saleMap.values()).sort((a, b) => {
       // מיון לפי תאריך ואז לפי מיקום
       if (a.date !== b.date) return b.date.localeCompare(a.date);
       return a.location.localeCompare(b.location);
