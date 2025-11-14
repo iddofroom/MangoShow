@@ -59,10 +59,26 @@ export interface LocationSummary {
   };
 }
 
+export interface SaleDetail {
+  product: string;
+  qty: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface SaleSummary {
+  date: string;
+  location: string;
+  totalRevenue: number;
+  products: SaleDetail[];
+  rowIndex: number;
+}
+
 export interface DashboardData {
   productSummaries: ProductSummary[];
   locationSummaries: LocationSummary[];
   learnedPrices: LearnedPrice[];
+  saleSummaries: SaleSummary[];
   totalRevenue: number;
   totalOrders: number;
   dateRange: {
@@ -221,11 +237,12 @@ export function processDashboardData(
 ): DashboardData {
   // למידת מחירים
   const learnedPrices = learnPrices(rows);
-  
+
   // מיפוי למוצרים ומיקומים
   const productMap = new Map<string, ProductSummary>();
   const locationMap = new Map<string, LocationSummary>();
-  
+  const saleSummaries: SaleSummary[] = [];
+
   let totalRevenue = 0;
   let totalOrders = 0;
   let minDate = '';
@@ -252,12 +269,27 @@ export function processDashboardData(
     }
     
     totalOrders++;
-    
+
+    // בניית סיכום מכירה
+    const saleProducts: SaleDetail[] = [];
+    const firstOrder = orders[0];
+    const saleDate = firstOrder.date || '';
+    const saleLocation = firstOrder.location || '';
+
     // אם יש רק מוצר אחד, אפשר להשתמש בסכום הכולל
     if (orders.length === 1) {
       const order = orders[0];
       const revenue = row.totalAmount;
-      
+      const unitPrice = revenue / order.qty;
+
+      // הוסף לסיכום המכירה
+      saleProducts.push({
+        product: order.product,
+        qty: order.qty,
+        unitPrice: unitPrice,
+        totalPrice: revenue
+      });
+
       totalRevenue += revenue;
       
       // עדכון מיפוי מוצרים
@@ -278,12 +310,12 @@ export function processDashboardData(
       productSummary.totalRevenue += revenue;
 
       // עדכון פירוט לפי מחיר
-      const unitPrice = (revenue / order.qty).toFixed(2);
-      if (!productSummary.priceBreakdown[unitPrice]) {
-        productSummary.priceBreakdown[unitPrice] = { qty: 0, revenue: 0 };
+      const priceKey = (revenue / order.qty).toFixed(2);
+      if (!productSummary.priceBreakdown[priceKey]) {
+        productSummary.priceBreakdown[priceKey] = { qty: 0, revenue: 0 };
       }
-      productSummary.priceBreakdown[unitPrice].qty += order.qty;
-      productSummary.priceBreakdown[unitPrice].revenue += revenue;
+      productSummary.priceBreakdown[priceKey].qty += order.qty;
+      productSummary.priceBreakdown[priceKey].revenue += revenue;
 
       if (!productSummary.locationBreakdown[order.location]) {
         productSummary.locationBreakdown[order.location] = { qty: 0, revenue: 0 };
@@ -350,7 +382,16 @@ export function processDashboardData(
 
           const orderEstimate = price * order.qty;
           const revenue = (orderEstimate / estimatedTotal) * row.totalAmount;
-          
+          const unitPrice = revenue / order.qty;
+
+          // הוסף לסיכום המכירה
+          saleProducts.push({
+            product: order.product,
+            qty: order.qty,
+            unitPrice: unitPrice,
+            totalPrice: revenue
+          });
+
           // עדכון מיפויים
           if (!productMap.has(order.product)) {
             productMap.set(order.product, {
@@ -369,12 +410,12 @@ export function processDashboardData(
           productSummary.totalRevenue += revenue;
 
           // עדכון פירוט לפי מחיר (למוצרים מרובים)
-          const unitPrice = (revenue / order.qty).toFixed(2);
-          if (!productSummary.priceBreakdown[unitPrice]) {
-            productSummary.priceBreakdown[unitPrice] = { qty: 0, revenue: 0 };
+          const priceKey2 = (revenue / order.qty).toFixed(2);
+          if (!productSummary.priceBreakdown[priceKey2]) {
+            productSummary.priceBreakdown[priceKey2] = { qty: 0, revenue: 0 };
           }
-          productSummary.priceBreakdown[unitPrice].qty += order.qty;
-          productSummary.priceBreakdown[unitPrice].revenue += revenue;
+          productSummary.priceBreakdown[priceKey2].qty += order.qty;
+          productSummary.priceBreakdown[priceKey2].revenue += revenue;
 
           if (!productSummary.locationBreakdown[order.location]) {
             productSummary.locationBreakdown[order.location] = { qty: 0, revenue: 0 };
@@ -425,6 +466,15 @@ export function processDashboardData(
 
         for (const order of orders) {
           const revenue = (order.qty / totalQty) * row.totalAmount;
+          const unitPrice = revenue / order.qty;
+
+          // הוסף לסיכום המכירה
+          saleProducts.push({
+            product: order.product,
+            qty: order.qty,
+            unitPrice: unitPrice,
+            totalPrice: revenue
+          });
 
           // עדכון מיפויים
           if (!productMap.has(order.product)) {
@@ -444,12 +494,12 @@ export function processDashboardData(
           productSummary.totalRevenue += revenue;
 
           // עדכון פירוט לפי מחיר
-          const unitPrice = (revenue / order.qty).toFixed(2);
-          if (!productSummary.priceBreakdown[unitPrice]) {
-            productSummary.priceBreakdown[unitPrice] = { qty: 0, revenue: 0 };
+          const priceKey3 = (revenue / order.qty).toFixed(2);
+          if (!productSummary.priceBreakdown[priceKey3]) {
+            productSummary.priceBreakdown[priceKey3] = { qty: 0, revenue: 0 };
           }
-          productSummary.priceBreakdown[unitPrice].qty += order.qty;
-          productSummary.priceBreakdown[unitPrice].revenue += revenue;
+          productSummary.priceBreakdown[priceKey3].qty += order.qty;
+          productSummary.priceBreakdown[priceKey3].revenue += revenue;
 
           if (!productSummary.locationBreakdown[order.location]) {
             productSummary.locationBreakdown[order.location] = { qty: 0, revenue: 0 };
@@ -493,6 +543,17 @@ export function processDashboardData(
         }
       }
     }
+
+    // הוסף את המכירה לסיכום
+    if (saleProducts.length > 0) {
+      saleSummaries.push({
+        date: saleDate,
+        location: saleLocation,
+        totalRevenue: row.totalAmount,
+        products: saleProducts,
+        rowIndex: row.rowIndex
+      });
+    }
   }
   
   // חישוב מחיר ממוצע למוצרים
@@ -521,6 +582,11 @@ export function processDashboardData(
       b.totalRevenue - a.totalRevenue
     ),
     learnedPrices,
+    saleSummaries: saleSummaries.sort((a, b) => {
+      // מיון לפי תאריך ואז לפי מיקום
+      if (a.date !== b.date) return b.date.localeCompare(a.date);
+      return a.location.localeCompare(b.location);
+    }),
     totalRevenue,
     totalOrders,
     dateRange: {

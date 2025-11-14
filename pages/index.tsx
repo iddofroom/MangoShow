@@ -39,6 +39,7 @@ function HomeComponent() {
   const [error, setError] = useState<string | null>(null);
   const [searchLocation, setSearchLocation] = useState(''); // חיפוש נקודת מכירה
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null); // מוצר מורחב לפירוט מחירים
+  const [expandedSale, setExpandedSale] = useState<number | null>(null); // מכירה מורחבת
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -616,6 +617,117 @@ function HomeComponent() {
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* סיכום לפי מכירה */}
+            <div style={{ marginBottom: '40px' }}>
+              <h2 style={{ fontSize: '32px', marginBottom: '20px', color: '#333' }}>
+                🛒 סיכום לפי מכירה
+              </h2>
+              <p style={{ color: '#666', marginBottom: '20px', fontSize: '16px' }}>
+                לחץ על מכירה כדי לראות את פירוט המוצרים והמחירים
+              </p>
+
+              {data.saleSummaries.map((sale, index) => (
+                <div key={index} style={{ marginBottom: '15px' }}>
+                  <div
+                    onClick={() => setExpandedSale(expandedSale === index ? null : index)}
+                    style={{
+                      background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                      color: 'white',
+                      padding: '20px',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      transition: 'transform 0.2s',
+                      boxShadow: '0 4px 15px rgba(250, 112, 154, 0.3)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                      <span style={{ fontSize: '24px' }}>
+                        {expandedSale === index ? '▼' : '▶'}
+                      </span>
+                      <div>
+                        <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
+                          {sale.date} - {sale.location}
+                        </div>
+                        <div style={{ fontSize: '14px', opacity: 0.9, marginTop: '5px' }}>
+                          {sale.products.length} {sale.products.length === 1 ? 'פריט' : 'פריטים'}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontSize: '14px', opacity: 0.9 }}>
+                        הכנסה כוללת
+                      </div>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
+                        {formatCurrency(sale.totalRevenue)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {expandedSale === index && (
+                    <div style={{
+                      background: '#fff5f7',
+                      padding: '20px',
+                      borderRadius: '0 0 10px 10px',
+                      marginTop: '-10px',
+                      paddingTop: '30px'
+                    }}>
+                      <table style={{
+                        width: '100%',
+                        borderCollapse: 'collapse',
+                        background: 'white',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                      }}>
+                        <thead>
+                          <tr style={{ background: '#fa709a', color: 'white' }}>
+                            <th style={{ padding: '15px', textAlign: 'right' }}>מוצר</th>
+                            <th style={{ padding: '15px', textAlign: 'center' }}>כמות</th>
+                            <th style={{ padding: '15px', textAlign: 'center' }}>מחיר ליחידה</th>
+                            <th style={{ padding: '15px', textAlign: 'center' }}>סך הכל</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sale.products.map((product, prodIndex) => (
+                            <tr key={prodIndex} style={{
+                              background: prodIndex % 2 === 0 ? '#fff5f7' : 'white',
+                              borderBottom: '1px solid #eee'
+                            }}>
+                              <td style={{ padding: '15px', fontWeight: 'bold', fontSize: '16px' }}>
+                                {product.product}
+                              </td>
+                              <td style={{ padding: '15px', textAlign: 'center', fontSize: '16px' }}>
+                                {formatNumber(product.qty)}
+                              </td>
+                              <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#fa709a' }}>
+                                {formatCurrency(product.unitPrice)}
+                              </td>
+                              <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#667eea', fontSize: '18px' }}>
+                                {formatCurrency(product.totalPrice)}
+                              </td>
+                            </tr>
+                          ))}
+                          <tr style={{ background: '#fa709a', color: 'white', fontWeight: 'bold' }}>
+                            <td colSpan={3} style={{ padding: '15px', textAlign: 'right', fontSize: '18px' }}>
+                              סך הכל מכירה:
+                            </td>
+                            <td style={{ padding: '15px', textAlign: 'center', fontSize: '20px' }}>
+                              {formatCurrency(sale.totalRevenue)}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
 
             {/* פירוט מוצרים לפי נקודת מכירה */}
