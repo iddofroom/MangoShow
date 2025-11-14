@@ -38,6 +38,7 @@ function HomeComponent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchLocation, setSearchLocation] = useState(''); // חיפוש נקודת מכירה
+  const [expandedProduct, setExpandedProduct] = useState<string | null>(null); // מוצר מורחב לפירוט מחירים
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -450,6 +451,123 @@ function HomeComponent() {
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* פירוט הכנסות לפי מוצר ומחיר */}
+            <div style={{ marginBottom: '40px' }}>
+              <h2 style={{ fontSize: '32px', marginBottom: '20px', color: '#333' }}>
+                💰 פירוט הכנסות לפי מוצר ודרגת מחיר
+              </h2>
+              <p style={{ color: '#666', marginBottom: '20px', fontSize: '16px' }}>
+                לחץ על מוצר כדי לראות את פירוט המכירות לפי דרגות מחיר
+              </p>
+
+              {data.productSummaries.map((product, index) => (
+                <div key={index} style={{ marginBottom: '20px' }}>
+                  <div
+                    onClick={() => setExpandedProduct(expandedProduct === product.product ? null : product.product)}
+                    style={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      color: 'white',
+                      padding: '20px',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      transition: 'transform 0.2s',
+                      boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                      <span style={{ fontSize: '24px' }}>
+                        {expandedProduct === product.product ? '▼' : '▶'}
+                      </span>
+                      <div>
+                        <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
+                          {product.product}
+                        </div>
+                        <div style={{ fontSize: '14px', opacity: 0.9, marginTop: '5px' }}>
+                          {Object.keys(product.priceBreakdown).length} דרגות מחיר שונות
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontSize: '14px', opacity: 0.9 }}>
+                        סה"כ הכנסות
+                      </div>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
+                        {formatCurrency(product.totalRevenue)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {expandedProduct === product.product && (
+                    <div style={{
+                      background: '#f8f9ff',
+                      padding: '20px',
+                      borderRadius: '0 0 10px 10px',
+                      marginTop: '-10px',
+                      paddingTop: '30px'
+                    }}>
+                      <table style={{
+                        width: '100%',
+                        borderCollapse: 'collapse',
+                        background: 'white',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                      }}>
+                        <thead>
+                          <tr style={{ background: '#667eea', color: 'white' }}>
+                            <th style={{ padding: '15px', textAlign: 'right' }}>מחיר ליחידה</th>
+                            <th style={{ padding: '15px', textAlign: 'center' }}>כמות נמכרה</th>
+                            <th style={{ padding: '15px', textAlign: 'center' }}>הכנסות</th>
+                            <th style={{ padding: '15px', textAlign: 'center' }}>אחוז מסך המכירות</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(product.priceBreakdown)
+                            .sort(([priceA], [priceB]) => parseFloat(priceB) - parseFloat(priceA))
+                            .map(([price, priceData], priceIndex) => {
+                              const percentage = (priceData.qty / product.totalQty) * 100;
+                              return (
+                                <tr key={priceIndex} style={{
+                                  background: priceIndex % 2 === 0 ? '#f8f9ff' : 'white',
+                                  borderBottom: '1px solid #eee'
+                                }}>
+                                  <td style={{ padding: '15px', fontWeight: 'bold', fontSize: '18px' }}>
+                                    ₪{parseFloat(price).toFixed(2)}
+                                  </td>
+                                  <td style={{ padding: '15px', textAlign: 'center', fontSize: '16px' }}>
+                                    {formatNumber(priceData.qty)} יחידות
+                                  </td>
+                                  <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#667eea' }}>
+                                    {formatCurrency(priceData.revenue)}
+                                  </td>
+                                  <td style={{ padding: '15px', textAlign: 'center' }}>
+                                    <div style={{
+                                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                      color: 'white',
+                                      padding: '8px 15px',
+                                      borderRadius: '20px',
+                                      display: 'inline-block',
+                                      fontWeight: 'bold'
+                                    }}>
+                                      {percentage.toFixed(1)}%
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
 
             {/* טבלת נקודות מכירה */}

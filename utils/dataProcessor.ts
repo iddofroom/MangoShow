@@ -26,6 +26,12 @@ export interface ProductSummary {
   totalQty: number;
   totalRevenue: number;
   avgPrice: number;
+  priceBreakdown: {
+    [price: string]: {
+      qty: number;
+      revenue: number;
+    };
+  };
   locationBreakdown: {
     [location: string]: {
       qty: number;
@@ -261,21 +267,30 @@ export function processDashboardData(
           totalQty: 0,
           totalRevenue: 0,
           avgPrice: 0,
+          priceBreakdown: {},
           locationBreakdown: {},
           dateBreakdown: {}
         });
       }
-      
+
       const productSummary = productMap.get(order.product)!;
       productSummary.totalQty += order.qty;
       productSummary.totalRevenue += revenue;
-      
+
+      // עדכון פירוט לפי מחיר
+      const unitPrice = (revenue / order.qty).toFixed(2);
+      if (!productSummary.priceBreakdown[unitPrice]) {
+        productSummary.priceBreakdown[unitPrice] = { qty: 0, revenue: 0 };
+      }
+      productSummary.priceBreakdown[unitPrice].qty += order.qty;
+      productSummary.priceBreakdown[unitPrice].revenue += revenue;
+
       if (!productSummary.locationBreakdown[order.location]) {
         productSummary.locationBreakdown[order.location] = { qty: 0, revenue: 0 };
       }
       productSummary.locationBreakdown[order.location].qty += order.qty;
       productSummary.locationBreakdown[order.location].revenue += revenue;
-      
+
       if (!productSummary.dateBreakdown[order.date]) {
         productSummary.dateBreakdown[order.date] = { qty: 0, revenue: 0 };
       }
@@ -342,21 +357,30 @@ export function processDashboardData(
               totalQty: 0,
               totalRevenue: 0,
               avgPrice: 0,
+              priceBreakdown: {},
               locationBreakdown: {},
               dateBreakdown: {}
             });
           }
-          
+
           const productSummary = productMap.get(order.product)!;
           productSummary.totalQty += order.qty;
           productSummary.totalRevenue += revenue;
-          
+
+          // עדכון פירוט לפי מחיר (למוצרים מרובים)
+          const unitPrice = (revenue / order.qty).toFixed(2);
+          if (!productSummary.priceBreakdown[unitPrice]) {
+            productSummary.priceBreakdown[unitPrice] = { qty: 0, revenue: 0 };
+          }
+          productSummary.priceBreakdown[unitPrice].qty += order.qty;
+          productSummary.priceBreakdown[unitPrice].revenue += revenue;
+
           if (!productSummary.locationBreakdown[order.location]) {
             productSummary.locationBreakdown[order.location] = { qty: 0, revenue: 0 };
           }
           productSummary.locationBreakdown[order.location].qty += order.qty;
           productSummary.locationBreakdown[order.location].revenue += revenue;
-          
+
           if (!productSummary.dateBreakdown[order.date]) {
             productSummary.dateBreakdown[order.date] = { qty: 0, revenue: 0 };
           }
