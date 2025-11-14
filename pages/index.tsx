@@ -8,7 +8,8 @@ import {
 import {
   processDashboardData,
   DashboardData,
-  RawRow
+  RawRow,
+  parseOrderDetails
 } from '../utils/dataProcessor';
 
 // Component only for client-side rendering
@@ -31,6 +32,7 @@ const ClientOnlyHome = dynamic(() => Promise.resolve(HomeComponent), {
 
 function HomeComponent() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [rawRows, setRawRows] = useState<RawRow[]>([]); // שמירת נתונים גולמיים לייצוא
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchLocation, setSearchLocation] = useState(''); // חיפוש נקודת מכירה
@@ -75,6 +77,7 @@ function HomeComponent() {
           
           const dashboardData = processDashboardData(rows);
           setData(dashboardData);
+          setRawRows(rows); // שמור את הנתונים הגולמיים
           setLoading(false);
         } catch (err) {
           setError('שגיאה בעיבוד הקובץ: ' + (err as Error).message);
@@ -94,6 +97,61 @@ function HomeComponent() {
 
   const formatNumber = (value: number) => {
     return value.toLocaleString('en-US');
+  };
+
+  const exportToCSV = () => {
+    if (!rawRows || rawRows.length === 0) return;
+
+    // יצירת שורות CSV
+    const csvRows: string[] = [];
+
+    // כותרות
+    csvRows.push('תאריך,נקודת מכירה,סכום,מוצר 1,כמות 1,מוצר 2,כמות 2,מוצר 3,כמות 3,מוצר 4,כמות 4,מוצר 5,כמות 5');
+
+    // עבור כל הזמנה
+    for (const row of rawRows) {
+      const orders = parseOrderDetails(row.orderDetails, row.totalQty);
+
+      if (orders.length === 0) continue;
+
+      // מצא את התאריך והמיקום הראשונים
+      const firstOrder = orders[0];
+      const date = firstOrder.date || '';
+      const location = firstOrder.location || '';
+
+      // בנה שורה עם כל המוצרים
+      const rowData: string[] = [
+        date,
+        location,
+        row.totalAmount.toFixed(2)
+      ];
+
+      // הוסף עד 5 מוצרים
+      for (let i = 0; i < 5; i++) {
+        if (i < orders.length) {
+          rowData.push(orders[i].product);
+          rowData.push(orders[i].qty.toString());
+        } else {
+          rowData.push('');
+          rowData.push('');
+        }
+      }
+
+      csvRows.push(rowData.map(field => `"${field}"`).join(','));
+    }
+
+    // יצירת קובץ להורדה
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'מכירות_ייצוא.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -194,6 +252,29 @@ function HomeComponent() {
         {/* דשבורד */}
         {data && (
           <div>
+            {/* כפתור ייצוא */}
+            <div style={{ marginBottom: '30px', textAlign: 'center' }}>
+              <button
+                onClick={exportToCSV}
+                style={{
+                  background: 'linear-gradient(135deg, #2d9c5e 0%, #20c997 100%)',
+                  color: 'white',
+                  padding: '15px 40px',
+                  borderRadius: '10px',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s',
+                  boxShadow: '0 4px 15px rgba(45, 156, 94, 0.3)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                📊 ייצא לגוגל ספרדשיט (CSV)
+              </button>
+            </div>
+
             {/* סיכום כללי */}
             <div style={{
               display: 'grid',
