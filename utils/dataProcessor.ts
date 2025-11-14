@@ -382,17 +382,16 @@ export function processDashboardData(
       // הוסף את הסכום הכולל רק פעם אחת
       totalRevenue += row.totalAmount;
 
-      // אם יש מוצרים עם מחירים ידועים, נחשב כמה הם צפויים לעלות
+      // אם יש מוצרים עם מחירים ידועים, נשתמש במחירים המדויקים שנלמדו
       // ואז נחלק את היתרה בין המוצרים ללא מחירים
       if (ordersWithPrice.length > 0 && ordersWithoutPrice.length > 0) {
-        // חלק 1: הקצה מחירים למוצרים עם מחיר ידוע בהתאם ליחס
+        // חלק 1: הקצה מחירים למוצרים עם מחיר ידוע - השתמש במחיר המדויק
         let allocatedRevenue = 0;
 
         for (const {order, price} of ordersWithPrice) {
-          const orderEstimate = price * order.qty;
-          const revenue = (orderEstimate / estimatedTotal) * row.totalAmount;
+          const revenue = price * order.qty; // מחיר מדויק מהנתונים הנלמדים
           allocatedRevenue += revenue;
-          const unitPrice = revenue / order.qty;
+          const unitPrice = price; // המחיר ליחידה הוא המחיר הנלמד
 
           // הוסף לסיכום המכירה
           saleProducts.push({
@@ -551,11 +550,10 @@ export function processDashboardData(
           if (!maxDate || order.date > maxDate) maxDate = order.date;
         }
       } else if (ordersWithPrice.length > 0 && ordersWithoutPrice.length === 0) {
-        // כל המוצרים יש להם מחיר ידוע - חלק לפי יחס המחירים הידועים
+        // כל המוצרים יש להם מחיר ידוע - השתמש במחירים המדויקים
         for (const {order, price} of ordersWithPrice) {
-          const orderEstimate = price * order.qty;
-          const revenue = (orderEstimate / estimatedTotal) * row.totalAmount;
-          const unitPrice = revenue / order.qty;
+          const revenue = price * order.qty; // מחיר מדויק
+          const unitPrice = price; // המחיר הנלמד
 
           // הוסף לסיכום המכירה
           saleProducts.push({
