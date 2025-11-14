@@ -1,0 +1,36 @@
+🥭 מנגו דרור - אפליקציית דשבורד
+
+✅ הפרויקט מוכן!
+
+📂 התיקייה: mango-dashboard/
+
+🚀 להתחלה:
+1. פתח את התיקייה mango-dashboard
+2. קרא את START_HERE.md
+3. הרץ: npm install && npm run dev
+
+📚 מסמכים חשובים:
+- START_HERE.md - התחל כאן!
+- README.md - תיעוד מלא
+- QUICKSTART.md - התחלה מהירה
+- DEPLOYMENT.md - פריסה ל-Netlify
+
+🎯 מה יש בפרויקט?
+- אפליקציית Next.js מלאה
+- העלאת CSV
+- למידת מחירים אוטומטית
+- דשבורד אינטראקטיבי
+- תמיכה מלאה בעברית
+- מוכן לפריסה ב-Netlify
+
+💻 טכנולוגיות:
+- Next.js 14
+- TypeScript
+- Recharts
+- PapaParse
+
+📊 23 קבצים
+📄 8 מסמכי תיעוד
+💻 5 קבצי קוד
+
+בהצלחה! 🎉
