@@ -44,6 +44,7 @@ export interface LocationSummary {
   location: string;
   totalRevenue: number;
   totalOrders: number;
+  salesDays: number; // מספר ימי מכירה - כמה תאריכים שונים
   productBreakdown: {
     [product: string]: {
       qty: number;
@@ -67,38 +68,55 @@ export interface DashboardData {
 // פונקציה לפירוק פרטי הזמנה מעמודה B
 export function parseOrderDetails(orderDetails: string, defaultQty: number): OrderEntry[] {
   const orders: OrderEntry[] = [];
-  
+
   if (!orderDetails || orderDetails.trim() === '') return orders;
-  
+
   const cellString = orderDetails.toString().trim();
-  
+
   // בדיקה אם יש נקודתיים - מוצרים עם כמויות ספציפיות
   if (cellString.includes(':')) {
     // תבנית: "מוצר - מיקום , תאריך : כמות"
     const regex = /(.*?)\s*-\s*(.*?)\s*,\s*(\d{1,2}\.\d{1,2})\s*:\s*(\d+)/g;
     let match;
-    
+
     while ((match = regex.exec(cellString)) !== null) {
       const product = match[1].trim();
       const location = match[2].trim();
       const date = match[3].trim();
       const qty = Number(match[4]);
-      
+
       orders.push({ product, location, date, qty });
+    }
+
+    // אם לא נמצאו התאמות עם התבנית המלאה, נסה לחלץ רק את שם המוצר
+    if (orders.length === 0) {
+      const productMatch = cellString.match(/(.*?)\s*:/);
+      if (productMatch) {
+        const product = productMatch[1].trim();
+        orders.push({ product, location: 'אחר', date: '', qty: defaultQty });
+      }
     }
   } else {
     // תבנית פשוטה: "מוצר - מיקום , תאריך"
     const match = cellString.match(/^(.*?)\s*-\s*(.*?)\s*,\s*(\d{1,2}\.\d{1,2})/);
-    
+
     if (match) {
       const product = match[1].trim();
       const location = match[2].trim();
       const date = match[3].trim();
-      
+
       orders.push({ product, location, date, qty: defaultQty });
+    } else {
+      // אם אין התאמה, נסה לחלץ רק את שם המוצר
+      if (cellString.length > 0) {
+        const product = cellString.split('-')[0].trim();
+        if (product) {
+          orders.push({ product, location: 'אחר', date: '', qty: defaultQty });
+        }
+      }
     }
   }
-  
+
   return orders;
 }
 
@@ -270,14 +288,21 @@ export function processDashboardData(
           location: order.location,
           totalRevenue: 0,
           totalOrders: 0,
-          productBreakdown: {}
-        });
+          salesDays: 0,
+          productBreakdown: {},
+          uniqueDates: new Set<string>()
+        } as any);
       }
-      
-      const locationSummary = locationMap.get(order.location)!;
+
+      const locationSummary = locationMap.get(order.location)! as any;
       locationSummary.totalRevenue += revenue;
       locationSummary.totalOrders++;
-      
+
+      // עדכון ימי מכירה
+      if (order.date && !locationSummary.uniqueDates.has(order.date)) {
+        locationSummary.uniqueDates.add(order.date);
+      }
+
       if (!locationSummary.productBreakdown[order.product]) {
         locationSummary.productBreakdown[order.product] = { qty: 0, revenue: 0 };
       }
@@ -343,13 +368,20 @@ export function processDashboardData(
               location: order.location,
               totalRevenue: 0,
               totalOrders: 0,
-              productBreakdown: {}
-            });
+              salesDays: 0,
+              productBreakdown: {},
+              uniqueDates: new Set<string>()
+            } as any);
           }
-          
-          const locationSummary = locationMap.get(order.location)!;
+
+          const locationSummary = locationMap.get(order.location)! as any;
           locationSummary.totalRevenue += revenue;
-          
+
+          // עדכון ימי מכירה
+          if (order.date && !locationSummary.uniqueDates.has(order.date)) {
+            locationSummary.uniqueDates.add(order.date);
+          }
+
           if (!locationSummary.productBreakdown[order.product]) {
             locationSummary.productBreakdown[order.product] = { qty: 0, revenue: 0 };
           }
@@ -367,17 +399,25 @@ export function processDashboardData(
   for (const [, product] of productMap) {
     product.avgPrice = product.totalRevenue / product.totalQty;
   }
-  
-  // עדכון מספר הזמנות למיקומים
+
+  // עדכון מספר הזמנות ומספר ימי מכירה למיקומים
+  const locationSummaries: LocationSummary[] = [];
   for (const [, location] of locationMap) {
-    location.totalOrders = totalOrders;
+    const locAny = location as any;
+    locationSummaries.push({
+      location: locAny.location,
+      totalRevenue: locAny.totalRevenue,
+      totalOrders: totalOrders,
+      salesDays: locAny.uniqueDates ? locAny.uniqueDates.size : 0,
+      productBreakdown: locAny.productBreakdown
+    });
   }
-  
+
   return {
-    productSummaries: Array.from(productMap.values()).sort((a, b) => 
+    productSummaries: Array.from(productMap.values()).sort((a, b) =>
       b.totalRevenue - a.totalRevenue
     ),
-    locationSummaries: Array.from(locationMap.values()).sort((a, b) => 
+    locationSummaries: locationSummaries.sort((a, b) =>
       b.totalRevenue - a.totalRevenue
     ),
     learnedPrices,

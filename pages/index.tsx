@@ -1,17 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Papa from 'papaparse';
 import dynamic from 'next/dynamic';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
-  PieChart, Pie, Cell, LineChart, Line, ResponsiveContainer 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer
 } from 'recharts';
-import { 
-  processDashboardData, 
-  DashboardData, 
-  RawRow 
+import {
+  processDashboardData,
+  DashboardData,
+  RawRow
 } from '../utils/dataProcessor';
-
-const COLORS = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140', '#30cfd0'];
 
 // Component only for client-side rendering
 const ClientOnlyHome = dynamic(() => Promise.resolve(HomeComponent), {
@@ -37,6 +35,7 @@ function HomeComponent() {
   const [error, setError] = useState<string | null>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [searchLocation, setSearchLocation] = useState(''); // חיפוש נקודת מכירה
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -124,119 +123,73 @@ function HomeComponent() {
           🥭 מנגו דרור - דשבורד ניתוח נתונים
         </h1>
         
-        <p style={{
-          textAlign: 'center',
-          color: '#666',
-          fontSize: '18px',
-          marginBottom: '40px'
-        }}>
-          העלה קובץ CSV לקבלת ניתוח מקיף של המכירות
-        </p>
-
-        {/* אזור העלאת קובץ */}
-        <div style={{
-          border: '3px dashed #667eea',
-          borderRadius: '15px',
-          padding: '40px',
-          textAlign: 'center',
-          marginBottom: '30px',
-          background: '#f8f9ff'
-        }}>
-          <label htmlFor="file-upload" style={{
-            cursor: 'pointer',
-            display: 'inline-block'
+        {!data && (
+          <p style={{
+            textAlign: 'center',
+            color: '#666',
+            fontSize: '18px',
+            marginBottom: '40px'
           }}>
-            <div style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              padding: '15px 40px',
-              borderRadius: '10px',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              transition: 'transform 0.2s',
-              display: 'inline-block'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-            >
-              📁 בחר קובץ CSV
-            </div>
-          </label>
-          <input
-            id="file-upload"
-            type="file"
-            accept=".csv"
-            onChange={handleFileUpload}
-            style={{ display: 'none' }}
-          />
-          
-          {loading && (
-            <div style={{ marginTop: '20px', color: '#667eea', fontSize: '16px' }}>
-              ⏳ מעבד נתונים...
-            </div>
-          )}
-          
-          {error && (
-            <div style={{
-              marginTop: '20px',
-              padding: '15px',
-              background: '#fee',
-              color: '#c00',
-              borderRadius: '10px',
-              fontWeight: 'bold'
-            }}>
-              ❌ {error}
-            </div>
-          )}
-        </div>
+            העלה קובץ CSV לקבלת ניתוח מקיף של המכירות
+          </p>
+        )}
 
-        {/* סינון תאריכים */}
-        {data && (
+        {/* אזור העלאת קובץ - מוסתר לאחר העלאה */}
+        {!data && (
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '20px',
+            border: '3px dashed #667eea',
+            borderRadius: '15px',
+            padding: '40px',
+            textAlign: 'center',
             marginBottom: '30px',
-            padding: '20px',
-            background: '#f8f9ff',
-            borderRadius: '10px'
+            background: '#f8f9ff'
           }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                מתאריך:
-              </label>
-              <input
-                type="text"
-                placeholder="dd.mm"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '2px solid #ddd',
-                  fontSize: '16px'
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                עד תאריך:
-              </label>
-              <input
-                type="text"
-                placeholder="dd.mm"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '2px solid #ddd',
-                  fontSize: '16px'
-                }}
-              />
-            </div>
+            <label htmlFor="file-upload" style={{
+              cursor: 'pointer',
+              display: 'inline-block'
+            }}>
+              <div style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                padding: '15px 40px',
+                borderRadius: '10px',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                transition: 'transform 0.2s',
+                display: 'inline-block'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                📁 בחר קובץ CSV
+              </div>
+            </label>
+            <input
+              id="file-upload"
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+            />
+
+            {loading && (
+              <div style={{ marginTop: '20px', color: '#667eea', fontSize: '16px' }}>
+                ⏳ מעבד נתונים...
+              </div>
+            )}
+
+            {error && (
+              <div style={{
+                marginTop: '20px',
+                padding: '15px',
+                background: '#fee',
+                color: '#c00',
+                borderRadius: '10px',
+                fontWeight: 'bold'
+              }}>
+                ❌ {error}
+              </div>
+            )}
           </div>
         )}
 
@@ -328,29 +281,6 @@ function HomeComponent() {
               </ResponsiveContainer>
             </div>
 
-            <div style={{ marginBottom: '40px' }}>
-              <h2 style={{ fontSize: '32px', marginBottom: '20px', color: '#333' }}>
-                🎯 חלוקת הכנסות לפי נקודת מכירה
-              </h2>
-              <ResponsiveContainer width="100%" height={400}>
-                <PieChart>
-                  <Pie
-                    data={data.locationSummaries}
-                    dataKey="totalRevenue"
-                    nameKey="location"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={150}
-                    label={(entry) => `${entry.location}: ${formatCurrency(entry.totalRevenue)}`}
-                  >
-                    {data.locationSummaries.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
 
             {/* טבלת מוצרים */}
             <div style={{ marginBottom: '40px' }}>
@@ -413,7 +343,7 @@ function HomeComponent() {
                     <tr style={{ background: '#43e97b', color: 'white' }}>
                       <th style={{ padding: '15px', textAlign: 'right' }}>נקודת מכירה</th>
                       <th style={{ padding: '15px', textAlign: 'center' }}>הכנסות</th>
-                      <th style={{ padding: '15px', textAlign: 'center' }}>מספר מוצרים</th>
+                      <th style={{ padding: '15px', textAlign: 'center' }}>מספר ימי מכירה</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -427,7 +357,7 @@ function HomeComponent() {
                           {formatCurrency(location.totalRevenue)}
                         </td>
                         <td style={{ padding: '15px', textAlign: 'center' }}>
-                          {Object.keys(location.productBreakdown).length}
+                          {location.salesDays}
                         </td>
                       </tr>
                     ))}
@@ -441,7 +371,31 @@ function HomeComponent() {
               <h2 style={{ fontSize: '32px', marginBottom: '20px', color: '#333' }}>
                 🔍 פירוט מוצרים לפי נקודת מכירה
               </h2>
-              {data.locationSummaries.map((location, locIndex) => (
+
+              {/* שדה חיפוש */}
+              <div style={{ marginBottom: '20px' }}>
+                <input
+                  type="text"
+                  placeholder="חפש נקודת מכירה..."
+                  value={searchLocation}
+                  onChange={(e) => setSearchLocation(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '15px',
+                    borderRadius: '10px',
+                    border: '2px solid #667eea',
+                    fontSize: '18px',
+                    background: '#f8f9ff'
+                  }}
+                />
+              </div>
+
+              {data.locationSummaries
+                .filter(location =>
+                  searchLocation === '' ||
+                  location.location.toLowerCase().includes(searchLocation.toLowerCase())
+                )
+                .map((location, locIndex) => (
                 <div key={locIndex} style={{
                   marginBottom: '30px',
                   background: '#f8f9ff',
